@@ -1,23 +1,10 @@
 name: Bitbucket YAML Patcher
 description: Greet someone and record the time
 inputs:
-  app:
-    description: For example `health-hub-web`
+  file:
+    description: YAML file to patch. For example 'ken-test/applications/default/security/ussd/values.yaml'
     required: true
-  namespace:
-    description: For example 'default'
-    required: true
-    default: default
-  team:
-    description: For example 'health-hub'
-    required: true
-  country:
-    description: For example `ae`
-    required: true
-  stage:
-    description: For example `acc`
-    required: true
-  tag:
+  value:
     description: For example `v1.2.3`
     required: true
     default: ${{ startsWith(github.ref,'refs/tags') && github.ref_name || github.sha }}
