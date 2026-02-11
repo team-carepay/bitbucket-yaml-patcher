@@ -34,7 +34,7 @@ export async function run(): Promise<void> {
       jp.value(yamlDoc, jsonpath, value);
 
       const formData = new FormData();
-      formData.append("author", "carepaybot <admin@carepay.com>");
+      formData.append("author", `${username} <admin@carepay.com>`);
       formData.append("message", `${file} to ${value} [skip ci]`);
       formData.append(file, yaml.dump(yamlDoc));
 
