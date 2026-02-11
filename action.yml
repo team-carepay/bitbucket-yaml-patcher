@@ -1,4 +1,4 @@
-name: Helm Deploy
+name: Bitbucket YAML Patcher
 description: Greet someone and record the time
 inputs:
   app:
