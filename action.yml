@@ -1,5 +1,5 @@
 name: Bitbucket YAML Patcher
-description: Greet someone and record the time
+description: Patch a YAML file in a Bitbucket repository
 inputs:
   file:
     description: YAML file to patch. For example 'ken-test/applications/default/security/ussd/values.yaml'
