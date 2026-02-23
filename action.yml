@@ -16,7 +16,7 @@ inputs:
     required: true
   jsonpath:
     required: true
-    default: $.microservice.image.tag
+    default: "$.microservice.image.tag"
   workspace:
     description: Bitbucket workspace slug
     required: true
