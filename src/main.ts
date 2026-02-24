@@ -32,7 +32,7 @@ export async function run(): Promise<void> {
       const text = await response.text();
       const yamlDoc = yaml.load(text) as any;
       const oldValue = jp.value(yamlDoc, jsonpath, value);
-      core.info(`Update YAML ${jsonpath} was ${oldValue}`);
+      core.info(`Update YAML ${jsonpath} from "${oldValue}" to "${value}"`);
 
       const formData = new FormData();
       formData.append("author", `${username} <admin@carepay.com>`);

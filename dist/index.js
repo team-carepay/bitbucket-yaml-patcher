@@ -38034,7 +38034,7 @@ async function run() {
             const text = await response.text();
             const yamlDoc = yaml.load(text);
             const oldValue = jsonpath_1.default.value(yamlDoc, jsonpath, value);
-            core.info(`Update YAML ${jsonpath} was ${oldValue}`);
+            core.info(`Update YAML ${jsonpath} from "${oldValue}" to "${value}"`);
             const formData = new FormData();
             formData.append("author", `${username} <admin@carepay.com>`);
             formData.append("message", `${file} to ${value} [skip ci]`);
