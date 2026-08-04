@@ -1,6 +1,6 @@
 import { Buffer } from "buffer";
 import * as core from "@actions/core";
-import * as yaml from "js-yaml";
+import { parseDocument } from "yaml";
 import jp from "jsonpath";
 
 export async function run(): Promise<void> {
@@ -30,14 +30,41 @@ export async function run(): Promise<void> {
     if (response.ok) {
       core.info(`Successfully fetched values from ${file}`);
       const text = await response.text();
-      const yamlDoc = yaml.load(text) as any;
-      const oldValue = jp.value(yamlDoc, jsonpath, value);
+      // parseDocument keeps comments, blank lines and key order; a load/dump round-trip
+      // rewrites the whole file and silently deletes every comment in it.
+      const doc = parseDocument(text);
+      // Only plain member/index steps map onto a YAML path. Wildcards, unions, filters and
+      // script expressions parse fine but would silently produce a path that resolves to
+      // nothing, so reject them here with a message that says which input was wrong.
+      const steps = jp.parse(jsonpath) as {
+        operation?: string;
+        scope?: string;
+        expression: { type: string; value: string | number };
+      }[];
+      const simple = (step: (typeof steps)[number]): boolean =>
+        step.scope === "child" &&
+        (step.operation === "member" || step.operation === "subscript") &&
+        ["identifier", "numeric_literal", "string_literal"].includes(step.expression.type);
+      if (steps[0]?.expression?.type !== "root" || !steps.slice(1).every(simple)) {
+        core.setFailed(
+          `Unsupported jsonpath "${jsonpath}": only plain paths like $.microservice.image.tag ` +
+            `(member and index steps) can be mapped onto a YAML document.`,
+        );
+        return;
+      }
+      const path = steps.slice(1).map((step) => step.expression.value);
+      const oldValue = doc.getIn(path);
+      if (oldValue === undefined) {
+        core.setFailed(`No value at ${jsonpath} in ${file} — refusing to write.`);
+        return;
+      }
+      doc.setIn(path, value);
       core.info(`Update YAML ${jsonpath} from "${oldValue}" to "${value}"`);
 
       const formData = new FormData();
       formData.append("author", `${username} <admin@carepay.com>`);
       formData.append("message", `${file} to ${value} [skip ci]`);
-      formData.append(file, yaml.dump(yamlDoc));
+      formData.append(file, doc.toString());
 
       const response2 = await fetch(
         `https://api.bitbucket.org/2.0/repositories/${workspace}/${repository}/src`,
