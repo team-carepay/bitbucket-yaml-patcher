@@ -1,6 +1,6 @@
 import { Buffer } from "buffer";
 import * as core from "@actions/core";
-import * as yaml from "js-yaml";
+import { parseDocument } from "yaml";
 import jp from "jsonpath";
 
 export async function run(): Promise<void> {
@@ -30,14 +30,25 @@ export async function run(): Promise<void> {
     if (response.ok) {
       core.info(`Successfully fetched values from ${file}`);
       const text = await response.text();
-      const yamlDoc = yaml.load(text) as any;
-      const oldValue = jp.value(yamlDoc, jsonpath, value);
+      // parseDocument keeps comments, blank lines and key order; a load/dump round-trip
+      // rewrites the whole file and silently deletes every comment in it.
+      const doc = parseDocument(text);
+      const path = jp
+        .parse(jsonpath)
+        .slice(1)
+        .map((step: { expression: { value: string | number } }) => step.expression.value);
+      const oldValue = doc.getIn(path);
+      if (oldValue === undefined) {
+        core.setFailed(`No value at ${jsonpath} in ${file} — refusing to write.`);
+        return;
+      }
+      doc.setIn(path, value);
       core.info(`Update YAML ${jsonpath} from "${oldValue}" to "${value}"`);
 
       const formData = new FormData();
       formData.append("author", `${username} <admin@carepay.com>`);
       formData.append("message", `${file} to ${value} [skip ci]`);
-      formData.append(file, yaml.dump(yamlDoc));
+      formData.append(file, doc.toString());
 
       const response2 = await fetch(
         `https://api.bitbucket.org/2.0/repositories/${workspace}/${repository}/src`,
