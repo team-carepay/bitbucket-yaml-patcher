@@ -33,10 +33,26 @@ export async function run(): Promise<void> {
       // parseDocument keeps comments, blank lines and key order; a load/dump round-trip
       // rewrites the whole file and silently deletes every comment in it.
       const doc = parseDocument(text);
-      const path = jp
-        .parse(jsonpath)
-        .slice(1)
-        .map((step: { expression: { value: string | number } }) => step.expression.value);
+      // Only plain member/index steps map onto a YAML path. Wildcards, unions, filters and
+      // script expressions parse fine but would silently produce a path that resolves to
+      // nothing, so reject them here with a message that says which input was wrong.
+      const steps = jp.parse(jsonpath) as {
+        operation?: string;
+        scope?: string;
+        expression: { type: string; value: string | number };
+      }[];
+      const simple = (step: (typeof steps)[number]): boolean =>
+        step.scope === "child" &&
+        (step.operation === "member" || step.operation === "subscript") &&
+        ["identifier", "numeric_literal", "string_literal"].includes(step.expression.type);
+      if (steps[0]?.expression?.type !== "root" || !steps.slice(1).every(simple)) {
+        core.setFailed(
+          `Unsupported jsonpath "${jsonpath}": only plain paths like $.microservice.image.tag ` +
+            `(member and index steps) can be mapped onto a YAML document.`,
+        );
+        return;
+      }
+      const path = steps.slice(1).map((step) => step.expression.value);
       const oldValue = doc.getIn(path);
       if (oldValue === undefined) {
         core.setFailed(`No value at ${jsonpath} in ${file} — refusing to write.`);
